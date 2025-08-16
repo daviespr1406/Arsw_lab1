@@ -5,10 +5,6 @@
 
 
 ### Dependencias:
-####   Lecturas:
-*  [Threads in Java](http://beginnersbook.com/2013/03/java-threads/)  (Hasta 'Ending Threads')
-*  [Threads vs Processes]( http://cs-fundamentals.com/tech-interview/java/differences-between-thread-and-process-in-java.php)
-
 ### Descripción
 Este ejercicio contiene una introducción a la programación con hilos en Java, además de la aplicación a un caso concreto.
 
@@ -25,7 +21,7 @@ Este ejercicio contiene una introducción a la programación con hilos en Java, 
          ![](img/1.png)
     3. Ejecute y revise la salida por pantalla.
     4. Cambie el incio con 'start()' por 'run()'. Cómo cambia la salida?, por qué?.
-       - al Cambiar la ejecucion de los hilos por Run() esta deja de hacerse de manera concurrente y pasa a hacerse de manera secuancial, haciendo que los hilos se ejecuten uno a uno con un orden entonces antes de ejecutar otro hilo finaliza el hilo en ejecucion
+       - al Cambiar la ejecucion de los hilos por Run() esta deja de hacerse de manera concurrente y pasa a hacerse de manera secuencial, haciendo que los hilos se ejecuten uno a uno con un orden entonces antes de ejecutar otro hilo finaliza el hilo en ejecucion
          ![](img/2.png)
          ![](img/3.png)
 
