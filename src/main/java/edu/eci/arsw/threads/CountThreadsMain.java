@@ -12,9 +12,9 @@ public class CountThreadsMain {
         CountThread t2 = new CountThread(6, 10);
         CountThread t3 = new CountThread(11, 15);
 
-        t1.start();
-        t2.start();
-        t3.start();
+        t1.run();
+        t3.run();
+        t2.run();
     }
     
 }
