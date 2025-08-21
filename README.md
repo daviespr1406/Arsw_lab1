@@ -59,7 +59,7 @@ Para 'refactorizar' este código, y hacer que explote la capacidad multi-núcleo
 
     * Se sabe que el HOST 202.24.34.55 está reportado en listas negras de una forma más dispersa, y que el host 212.24.24.55 NO está en ninguna lista negra.
 
-
+![](img/4.png)
 **Parte II.I Para discutir la próxima clase (NO para implementar aún)**
 
 La estrategia de paralelismo antes implementada es ineficiente en ciertos casos, pues la búsqueda se sigue realizando aún cuando los N hilos (en su conjunto) ya hayan encontrado el número mínimo de ocurrencias requeridas para reportar al servidor como malicioso. Cómo se podría modificar la implementación para minimizar el número de consultas en estos casos?, qué elemento nuevo traería esto al problema?
@@ -69,14 +69,53 @@ La estrategia de paralelismo antes implementada es ineficiente en ciertos casos,
 A partir de lo anterior, implemente la siguiente secuencia de experimentos para realizar las validación de direcciones IP dispersas (por ejemplo 202.24.34.55), tomando los tiempos de ejecución de los mismos (asegúrese de hacerlos en la misma máquina):
 
 1. Un solo hilo.
+
+![](img/5.png)
+
 2. Tantos hilos como núcleos de procesamiento (haga que el programa determine esto haciendo uso del [API Runtime](https://docs.oracle.com/javase/7/docs/api/java/lang/Runtime.html)).
+   ![](img/6.png)
 3. Tantos hilos como el doble de núcleos de procesamiento.
+    ![](img/7.png)
 4. 50 hilos.
+   ![](img/8.png)
+
 5. 100 hilos.
+    ![](img/9.png)
 
 Al iniciar el programa ejecute el monitor jVisualVM, y a medida que corran las pruebas, revise y anote el consumo de CPU y de memoria en cada caso. ![](img/jvisualvm.png)
 
 Con lo anterior, y con los tiempos de ejecución dados, haga una gráfica de tiempo de solución vs. número de hilos. Analice y plantee hipótesis con su compañero para las siguientes preguntas (puede tener en cuenta lo reportado por jVisualVM):
+La siguiente tabla representa la relación entre el **tiempo de ejecución de la solución** y el **número de hilos empleados**.
+
+| Número de hilos | Tiempo (ms) |
+|----------------:|------------:|
+|               1 |       97072 |
+|               8 |       12848 |
+|              16 |        5987 |
+|              50 |       1899 |
+|             100 |       940 |
+
+---
+
+## 2. Observaciones a partir de jVisualVM
+
+- **Uso de CPU:**  
+  El reporte muestra un valor extraño de `CPU usage: -127.9%`. Esto indica un error en la lectura de métricas por parte de VisualVM. Sin embargo, en la práctica se observa que el consumo de CPU real es bajo, lo que puede deberse a que el trabajo no genera suficiente carga computacional para aprovechar los múltiples hilos.
+
+- **Uso de memoria (Heap):**
+    - Tamaño de heap: ~268 MB
+    - Uso real: ~23 MB  
+      El uso de memoria se mantiene estable, lo que indica que el programa no genera presión de memoria ni problemas de recolección de basura (GC).
+
+- **Clases cargadas:**  
+  ~2700 clases cargadas y estables durante la ejecución. No hay descarga significativa, lo que significa que el overhead de clases es mínimo.
+
+- **Hilos:**
+    - Picos de hasta ~114 hilos vivos durante la ejecución.
+    - Gran parte de ellos son threads internos de la JVM (daemon threads).
+    - El número de hilos activos en la aplicación principal es estable (13 visibles en la métrica).
+
+---
 
 **Parte IV - Ejercicio Black List Search**
 
@@ -84,6 +123,34 @@ Con lo anterior, y con los tiempos de ejecución dados, haga una gráfica de tie
 
    ![](img/ahmdahls.png), donde _S(n)_ es el mejoramiento teórico del desempeño, _P_ la fracción paralelizable del algoritmo, y _n_ el número de hilos, a mayor _n_, mayor debería ser dicha mejora. Por qué el mejor desempeño no se logra con los 500 hilos?, cómo se compara este desempeño cuando se usan 200?.
 
+Aplicando la **ley de Amdahl**:
+
+\[
+S(n)=\frac{1}{(1-P)+\frac{P}{n}}
+\]
+
+En teoría 500 hilos dan mayor speedup que 200, pero en la práctica el rendimiento **no mejora** (e incluso empeora) por:
+
+- **Overhead de hilos**: creación, planificador, cambios de contexto.
+- **Contención** en recursos compartidos (CPU caches, memoria, locks).
+- **Saturación de ancho de banda** (memoria/bus) y overhead de la JVM (GC, stacks).
+- Si es **I/O-bound**, demasiados hilos no reducen la latencia; si es **CPU-bound**, más hilos que núcleos sólo generan overhead.
 2. Cómo se comporta la solución usando tantos hilos de procesamiento como núcleos comparado con el resultado de usar el doble de éste?.
 
+**≈ núcleos (N=c)** → óptimo para cargas **CPU-bound**; cada hilo aprovecha un core.
+- **≈ 2×núcleos (N=2c)** → útil si hay bloqueos/esperas (I/O, GC, sincronización), pues otros hilos avanzan mientras unos esperan.
+
+Si la carga es **puramente CPU-bound**, usar 2c sólo agrega **contención y cambios de contexto**, degradando o apenas mejorando el tiempo total.
+
 3. De acuerdo con lo anterior, si para este problema en lugar de 100 hilos en una sola CPU se pudiera usar 1 hilo en cada una de 100 máquinas hipotéticas, la ley de Amdahls se aplicaría mejor?. Si en lugar de esto se usaran c hilos en 100/c máquinas distribuidas (siendo c es el número de núcleos de dichas máquinas), se mejoraría?. Explique su respuesta.
+
+
+   La ley de Amdahl **sigue aplicando**, pero ahora el término “serial” incluye los **overheads de distribución**:
+
+- Latencia de red.
+- Coordinación y consolidación de resultados.
+- (De)serialización de datos.
+
+### Escenarios:
+- **100 máquinas × 1 hilo** → poca contención local, pero mucho **overhead de red** y orquestación.
+- **\(c\) hilos en \(100/c\) máquinas** → mejor balance: se aprovecha el paralelismo intra-nodo (caches, memoria local) y se reduce el número de nodos a coordinar.
